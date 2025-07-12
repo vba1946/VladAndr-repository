@@ -1,40 +1,35 @@
-# Код программы Тетрис
-
-# Импортируем библиотеку pygame — основной модуль для создания игр на Python
+# Полный код игры Тетрис
 import pygame
-# Импортируем random — чтобы случайным образом выбирать фигуры и цвета
 import random
 
-# Инициализируем pygame (всё, что связано с графикой и звуком)
 pygame.init()
 
 # Настройки окна
-WIDTH, HEIGHT = 300, 600         # Ширина и высота игрового окна в пикселях
-BLOCK_SIZE = 30                   # Размер одного блока (ширина и высота квадрата)
-COLUMNS = WIDTH // BLOCK_SIZE     # Количество столбцов в сетке (10)
-ROWS = HEIGHT // BLOCK_SIZE       # Количество строк в сетке (20)
+WIDTH, HEIGHT = 300, 600
+BLOCK_SIZE = 30
+COLUMNS = WIDTH // BLOCK_SIZE
+ROWS = HEIGHT // BLOCK_SIZE
 
-# Цвета, заданные в формате RGB (красный, зелёный, синий)
-BLACK = (0, 0, 0)                 # Чёрный — фон и пустые ячейки
-GRAY = (100, 100, 100)            # Серый — границы клеток
-WHITE = (255, 255, 255)           # Белый — может использоваться как временный цвет
+# Цвета
+BLACK = (0, 0, 0)
+GRAY = (100, 100, 100)
+WHITE = (255, 255, 255)
 
-# Создание экрана — вот где появляется переменная screen!
-screen = pygame.display.set_mode((WIDTH, HEIGHT))  # Создаём окно с заданными размерами
-pygame.display.set_caption("Tetris")               # Устанавливаем заголовок окна
+# Создание экрана
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Tetris")
 
 # Формы фигур (тетромино)
 SHAPES = [
-    [[1]],[[1]],[[1]],[[1]],                  # ❌ Ошибка: это не корректная форма I
-    [[1, 0, 0], [1, 1, 1]],          # J
-    [[0, 0, 1], [1, 1, 1]],          # L
-    [[1, 1], [1, 1]],                # O
-    [[0, 1, 1], [1, 1, 0]],          # S
-    [[0, 1, 0], [1, 1, 1]],          # T
-    [[1, 1, 0], [0, 1, 1]]           # Z
+    [[1]],[[1]],[[1]],[[1]],             # I
+    [[1, 0, 0], [1, 1, 1]],     # J
+    [[0, 0, 1], [1, 1, 1]],     # L
+    [[1, 1], [1, 1]],           # O
+    [[0, 1, 1], [1, 1, 0]],     # S
+    [[0, 1, 0], [1, 1, 1]],     # T
+    [[1, 1, 0], [0, 1, 1]]      # Z
 ]
 
-# Цвета для каждой формы
 COLORS = [
     (0, 255, 255),  # Голубой — I
     (0, 0, 255),    # Синий — J
@@ -45,83 +40,69 @@ COLORS = [
     (255, 0, 0)     # Красный — Z
 ]
 
-
 def create_grid(locked_positions={}):
-    # Создаём сетку из чёрных квадратов
-    grid = [[BLACK for x in range(COLUMNS)] for y in range(ROWS)]
-    # Если есть зафиксированные блоки (уже упавшие), рисуем их
+    grid = [[BLACK for _ in range(COLUMNS)] for _ in range(ROWS)]
     for (x, y), color in locked_positions.items():
         if y >= 0:
             grid[y][x] = color
     return grid
 
-
 def valid_space(shape, offset, grid):
-    # Проверяем, можно ли переместить/повернуть фигуру
     off_x, off_y = offset
     for y, row in enumerate(shape):
         for x, cell in enumerate(row):
             if cell:
                 new_x = off_x + x
                 new_y = off_y + y
-                # Проверка выхода за границы
                 if new_x < 0 or new_x >= COLUMNS or new_y >= ROWS:
                     return False
-                # Проверка, занята ли ячейка
                 if grid[new_y][new_x] != BLACK:
                     return False
     return True
 
-
 def rotate(shape):
-    # Поворачивает фигуру на 90 градусов
     return [list(row)[::-1] for row in zip(*shape)]
-
 
 class Piece:
     def __init__(self, x, y, shape, color):
-        # Конструктор класса "Фигура"
-        self.x = x              # Начальная координата X
-        self.y = y              # Начальная координата Y
-        self.shape = shape      # Форма фигуры
-        self.color = color      # Цвет фигуры
-        self.rotation = 0       # Текущее состояние поворота
+        self.x = x
+        self.y = y
+        self.shape = shape
+        self.color = color
+        self.rotation = 0
 
     def image(self):
-        # Возвращает текущую ориентацию фигуры (с учётом поворотов)
         rotated = self.shape
-        for _ in range(self.rotation % 4):  # Поворачиваем до нужного состояния
+        for _ in range(self.rotation % 4):
             rotated = rotate(rotated)
         return rotated
 
+def draw_text_middle(surface, text, size, color, x, y):
+    font = pygame.font.SysFont("comicsans", size, bold=True)
+    label = font.render(text, True, color)
+    surface.blit(label, (x, y))
 
 def draw_grid(surface, grid):
-    # Рисует всю сетку с заполненными блоками
     for y in range(ROWS):
         for x in range(COLUMNS):
             pygame.draw.rect(surface, grid[y][x],
                              (x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
 
-    # Рисует сетку (вертикальные линии)
     for x in range(COLUMNS):
         pygame.draw.line(surface, GRAY, (x * BLOCK_SIZE, 0), (x * BLOCK_SIZE, HEIGHT))
-    # Рисует сетку (горизонтальные линии)
     for y in range(ROWS):
         pygame.draw.line(surface, GRAY, (0, y * BLOCK_SIZE), (WIDTH, y * BLOCK_SIZE))
 
-
 def clear_rows(grid, locked):
-    # Очищает полностью заполненные ряды
     cleared = 0
-    for y in range(ROWS - 1, -1, -1):  # Проходим снизу вверх
-        if BLACK not in grid[y]:       # Если ряд полностью заполнен
+    for y in range(ROWS - 1, -1, -1):
+        if BLACK not in grid[y]:
             cleared += 1
             for x in range(COLUMNS):
                 if (x, y) in locked:
-                    del locked[(x, y)]  # Удаляем блоки из словаря
+                    del locked[(x, y)]
 
     if cleared > 0:
-        # Перемещаем все блоки выше очищенных рядов вниз
         for key in sorted(list(locked), key=lambda pos: pos[1])[::-1]:
             x, y = key
             if y < ROWS:
@@ -129,45 +110,61 @@ def clear_rows(grid, locked):
                 locked[new_key] = locked.pop(key)
     return cleared
 
-
 def main():
-    # Основная функция игры
-    clock = pygame.time.Clock()   # Объект часов для контроля FPS
-    fall_time = 0                 # Время падения фигуры
-    fall_speed = 0.5              # Скорость падения (в секундах)
-    grid = create_grid()          # Создаём начальную сетку
-    locked_positions = {}         # Храним уже упавшие блоки
-    # Создаём первую фигуру со случайной формой и цветом
+    clock = pygame.time.Clock()
+    fall_time = 0
+    fall_speed = 0.5
+    grid = create_grid()
+    locked_positions = {}
     current_piece = Piece(3, 0, random.choice(SHAPES), random.choice(COLORS))
-    running = True                # Состояние игры (игра продолжается)
+    running = True
+    score = 0
+    paused = False
+    accelerating = False  # Для ускоренного падения
 
     while running:
-        grid = create_grid(locked_positions)  # Обновляем сетку
-        fall_time += clock.get_rawtime()        # Добавляем время, прошедшее с последнего тика
-        clock.tick()                            # Обновляем часы
+        grid = create_grid(locked_positions)
+        fall_time += clock.get_rawtime()
+        clock.tick()
 
-        # Проверяем, пора ли опустить фигуру
-        if fall_time / 1000 > fall_speed:
-            fall_time = 0
-            current_piece.y += 1
-            # Проверяем, не вышла ли фигура за пределы или не столкнулась с другими блоками
-            if not valid_space(current_piece.image(), (current_piece.x, current_piece.y), grid):
-                current_piece.y -= 1
-                # Фиксируем фигуру на поле
-                for y, row in enumerate(current_piece.image()):
-                    for x, cell in enumerate(row):
-                        if cell:
-                            locked_positions[(current_piece.x + x, current_piece.y + y)] = current_piece.color
-                clear_rows(grid, locked_positions)  # Очищаем заполненные строки
-                # Создаём новую фигуру
-                current_piece = Piece(3, 0, random.choice(SHAPES), random.choice(COLORS))
+        if not paused:
+            speed = fall_speed / 5 if accelerating else fall_speed
+            if fall_time / 1000 > speed:
+                fall_time = 0
+                current_piece.y += 1
+                if not valid_space(current_piece.image(), (current_piece.x, current_piece.y), grid):
+                    current_piece.y -= 1
+                    for y, row in enumerate(current_piece.image()):
+                        for x, cell in enumerate(row):
+                            if cell:
+                                locked_positions[(current_piece.x + x, current_piece.y + y)] = current_piece.color
+                    cleared = clear_rows(grid, locked_positions)
+                    score += cleared * 100
+                    current_piece = Piece(3, 0, random.choice(SHAPES), random.choice(COLORS))
+                    if not valid_space(current_piece.image(), (current_piece.x, current_piece.y), grid):
+                        print("Игра окончена!")
+                        draw_text_middle(screen, "Игра окончена!", 40, WHITE, WIDTH // 2 - 100, HEIGHT // 2)
+                        pygame.display.update()
+                        pygame.time.delay(2000)
+                        running = False
 
-        # Обработка событий (нажатие клавиш, закрытие окна и т.д.)
+        # Обработка событий
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                pygame.quit()
+                return  # Выход из игры при закрытии окна
 
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    paused = not paused
+                elif event.key == pygame.K_DOWN:
+                    accelerating = True
+
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_DOWN:
+                    accelerating = False
+
+            if not paused and event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     current_piece.x -= 1
                     if not valid_space(current_piece.image(), (current_piece.x, current_piece.y), grid):
@@ -176,30 +173,51 @@ def main():
                     current_piece.x += 1
                     if not valid_space(current_piece.image(), (current_piece.x, current_piece.y), grid):
                         current_piece.x -= 1
-                elif event.key == pygame.K_DOWN:
-                    current_piece.y += 1
-                    if not valid_space(current_piece.image(), (current_piece.x, current_piece.y), grid):
-                        current_piece.y -= 1
                 elif event.key == pygame.K_UP:
                     current_piece.rotation += 1
                     if not valid_space(current_piece.image(), (current_piece.x, current_piece.y), grid):
                         current_piece.rotation -= 1
 
-        # Рисуем текущую фигуру на сетке
+        # Рисуем текущую фигуру
         for y, row in enumerate(current_piece.image()):
             for x, cell in enumerate(row):
                 if cell and current_piece.y + y >= 0:
-                    grid[current_piece.y + y][current_piece.x + x] = current_piece.color
+                    grid[current_piece.y + y][x + current_piece.x] = current_piece.color
 
-        # Отрисовываем обновлённую сетку
+        # Отрисовка
         draw_grid(screen, grid)
-        # Обновляем экран
+        draw_text_middle(screen, f"Счёт: {score}", 24, WHITE, WIDTH // 2 - 70, 10)
+
+        if paused:
+            draw_text_middle(screen, "ПАУЗА", 40, WHITE, WIDTH // 2 - 60, HEIGHT // 2)
+            pygame.display.update()
+            continue
+
         pygame.display.update()
 
-    # Выходим из pygame
+def main_menu():
+    run = True
+    while run:
+        screen.fill(BLACK)
+        draw_text_middle(screen, "Нажмите любую клавишу, чтобы начать", 24, WHITE, WIDTH // 2 - 180, HEIGHT // 2)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+            if event.type == pygame.KEYDOWN:
+                main()
+                run = False  # Останавливаем меню после запуска игры
+
     pygame.quit()
 
-
-# Точка входа в программу
 if __name__ == "__main__":
-    main()
+    main_menu()
+
+# C:\Users\VA_Biryukov\AppData\Local\Programs\Python\Python310\python.exe D:\Documents\GitHub\VladAndr-repository\test3.py
+# pygame 2.6.1 (SDL 2.28.4, Python 3.10.1)
+# Hello from the pygame community. https://www.pygame.org/contribute.html
+# Игра окончена!
+# Process finished with exit code 0
+
